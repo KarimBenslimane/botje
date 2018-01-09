@@ -58,7 +58,7 @@ class poloniex:
     def return24Volume(self):
         return self.api_query("return24hVolume")
 
-    def returnOrderBook (self, currencyPair):
+    def returnOrderBook(self, currencyPair):
         return self.api_query("returnOrderBook", {'currencyPair': currencyPair})
 
     def returnMarketTradeHistory (self, currencyPair):
@@ -115,6 +115,15 @@ class poloniex:
     # orderNumber   The order number
     def sell(self,currencyPair,rate,amount):
         return self.api_query('sell',{"currencyPair":currencyPair,"rate":rate,"amount":amount})
+
+    def marginBuy(self, currencyPair, rate, amount):
+        return self.api_query('marginBuy',{"currencyPair":currencyPair,"rate":rate,"amount":amount})
+   
+    def marginSell(self, currencyPair, rate, amount):
+        return self.api_query('marginSell',{"currencyPair":currencyPair,"rate":rate,"amount":amount})
+
+    def closeMarginPosition(self, currencyPair):
+        return self.api_query('closeMarginPosition',{"currencyPair":currencyPair})
 
     # Cancels an order you have placed in a given market. Required POST parameters are "currencyPair" and "orderNumber".
     # Inputs:
