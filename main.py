@@ -1,4 +1,5 @@
-from poloniex import poloniex
+#from poloniex import poloniex
+from testpoloniex import poloniex
 from order import Order
 import functions as fun 
 
@@ -50,8 +51,8 @@ final = False
 if isinstance(orderModel, Order):
 	position = fun.findPosition(poloModel, orderModel)
 	if position:
-		validation = True
-		# validation = fun.validatePosition(poloModel, orderModel)
+		# validation = True
+		validation = fun.validatePosition(poloModel, orderModel)
 		if validation:
 			final = fun.finalizePosition(poloModel, orderModel)
 if final:

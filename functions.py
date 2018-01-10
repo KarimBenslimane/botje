@@ -2,7 +2,7 @@
 from datetime import datetime
 from itertools import cycle
 from order import Order
-from poloniex import poloniex
+from testpoloniex import poloniex
 import json
 import time
 
@@ -17,31 +17,31 @@ def initiateModel(APIKey, i_secret):
 	except:
 	    print("Unexpected error:", sys.exc_info()[0])
 
-def askForMarket(poloModel):
+def askForMarket(polo_model):
 	command = raw_input("\nPlease insert a BTC Market for trading or insert (s) for an overview... \n")
 	if command == 's':
-		printMarkets(poloModel)
+		printMarkets(polo_model)
 	else:
-		market = checkMarket(command, poloModel)
+		market = checkMarket(command, polo_model)
 		if market:
 			return market
-	return askForMarket(poloModel)
+	return askForMarket(polo_model)
 
-def printMarkets(poloModel):
-	markets = getMarketList(poloModel)
+def printMarkets(polo_model):
+	markets = getMarketList(polo_model)
 	print("\nMarket List: \n")
 	for m in markets:
 		print(m)
 
-def getMarketList(poloModel):
+def getMarketList(polo_model):
 	markets = []
-	output = poloModel.returnTicker()
+	output = polo_model.returnTicker()
 	for r in output:
 		markets.append(r)
 	return markets
 
-def checkMarket(command, poloModel):
-	markets = getMarketList(poloModel)
+def checkMarket(command, polo_model):
+	markets = getMarketList(polo_model)
 	if not command in markets:
 		print("\nNot a valid Market entered, please try again... \n")
 		return False
@@ -159,21 +159,21 @@ def takePosition(current_price, order_model, polo_model):
 		if order_model.trend == Order.UP_TREND:
 			#buythatshit
 			print("\nmargin Buy market: "+str(order_model.market)+" amount: "+str(order_model.amount)+" for price: "+str(rightPrice))
-			#poloniexOrder = poloniex.marginBuy(order_model.market, rightPrice, order_model.amount)
+			poloniexOrder = polo_model.marginBuy(order_model.market, rightPrice, order_model.amount)
 		else:
 			#sellthatshit
 			print("\nmargin Sell market: "+str(order_model.market)+" amount: "+str(order_model.amount)+" for price: "+str(rightPrice))
-			#poloniexOrder = poloniex.marginSell(order_model.market, rightPrice, order_model.amount)
+			poloniexOrder = polo_model.marginSell(order_model.market, rightPrice, order_model.amount)
 		#for testing purpose:
-		poloniexOrder = {}
-		poloniexOrder['success'] = 1
-		poloniexOrder['orderNumber'] = "test"
-		poloniexOrder['date'] = datetime.now()
+		# poloniexOrder = {}
+		# poloniexOrder['success'] = 1
+		# poloniexOrder['orderNumber'] = "test"
+		# poloniexOrder['date'] = datetime.now()
 		if poloniexOrder['success'] == 1:
 			orderNumber = poloniexOrder['orderNumber']
-			orderDate = poloniexOrder['date']
+			# orderDate = poloniexOrder['date']
 			order_model.order_number = orderNumber
-			order_model.order_date = orderDate
+			# order_model.order_date = orderDate
 			print("\nOrder has been placed successfully, order#: "+str(orderNumber)+"\n")
 			return True
 		else:
@@ -285,8 +285,7 @@ def finalizePosition(polo_model, order_model):
 			eTimeMinutes = getElapsedTimeInMinutes(startTime)
 			waitForTimeInMinutes(order_model, eTimeMinutes)
 	#close position
-	return True
-	# return closePosition(polo_model, order_model)
+	return closePosition(polo_model, order_model)
 
 def closePosition(polo_model, order_model):
 	close = polo_model.closeMarginPosition(order_model.market)

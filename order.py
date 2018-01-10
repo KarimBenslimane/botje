@@ -32,7 +32,7 @@ class Order:
 		elif command == 'n':
 			return False
 		else:
-			return confirmation()
+			return self.confirmation()
 
 	@staticmethod
 	def trendToString(trend):
