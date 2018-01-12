@@ -61,4 +61,4 @@ if final:
 else:
 	print("\nExiting program, bye!...")
 
-raw_input()
+raw_input("\nPress Enter to Close....")
