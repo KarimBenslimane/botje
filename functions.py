@@ -162,6 +162,9 @@ def takePosition(current_price, order_model, polo_model):
 			#sellthatshit
 			print("\nmargin Sell market: "+str(order_model.market)+" amount: "+str(order_model.amount)+" for price: "+str(rightPrice))
 			poloniexOrder = polo_model.marginSell(order_model.market, rightPrice, order_model.amount)
+		print("\n TESTING ----------------------")
+		print(poloniexOrder)
+		print("\n TESTING ----------------------")
 		#for testing purpose:
 		# poloniexOrder = {}
 		# poloniexOrder['success'] = 1
