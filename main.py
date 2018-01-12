@@ -60,3 +60,5 @@ if final:
 	print("\nFully completed. Exiting program, bye!...")
 else:
 	print("\nExiting program, bye!...")
+
+raw_input()
