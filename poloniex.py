@@ -26,7 +26,6 @@ class poloniex:
         return after
 
     def api_query(self, command, req={}):
-
         if(command == "returnTicker" or command == "return24hVolume"):
             ret = urllib2.urlopen(urllib2.Request('https://poloniex.com/public?command=' + command))
             return json.loads(ret.read())

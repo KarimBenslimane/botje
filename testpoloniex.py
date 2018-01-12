@@ -27,7 +27,7 @@ class poloniex:
         return  {
                     "asks":[
                             [0.09600000,0.07829428], #BTC 4.30739611 SUM 4.30739611
-                            [0.09613640,44.86870950],  #BTC 0.00752693 SUM 0.01477924
+                            [0.09613640,0.05000000],  #BTC 0.00752693 SUM 0.01477924
                     ],
                     "bids":[
                             [0.09632893,65.71400000], #BTC 6.33015931 SUM 6.33015931
@@ -40,7 +40,7 @@ class poloniex:
     def returnOpenOrders(self,currencyPair):
         return  [
                     {
-                        "orderNumber":"12345",
+                        "orderNumber":"154407998",
                         "type":"sell",
                         "rate":"0.025",
                         "amount":"100",
@@ -65,10 +65,10 @@ class poloniex:
                         "amount": "0.10000000", 
                         "total": "0.00256549", 
                         "fee": "0.00200000", 
-                        "orderNumber": "154407998", 
+                        "orderNumber": "124124124", 
                         "type": "sell", 
                         "category": "exchange" 
-                    }, 
+                    },
                     { 
                         "globalTradeID": 25129628, 
                         "tradeID": "6325741", 
@@ -80,7 +80,7 @@ class poloniex:
                         "orderNumber": "34225195693", 
                         "type": "buy", 
                         "category": "exchange" 
-                    }, 
+                    },
         ]
 
     def marginBuy(self, currencyPair, rate, amount):

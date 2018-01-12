@@ -2,14 +2,12 @@
 from datetime import datetime
 from itertools import cycle
 from order import Order
-from testpoloniex import poloniex
+from poloniex import poloniex
 import json
 import time
 
 def checkSecret(secret):
-	if len(secret) != 128:
-		return False
-	return True
+	return len(secret) == 128
 
 def initiateModel(APIKey, i_secret):
 	try:
@@ -137,7 +135,7 @@ def findPosition(polo_model, order_model):
 		print(currentPrice)
 		#if currentPrice exceeds constant(FB level + extra) (depending on trend if above or below):
 		#try:take position (buy or sell depending on trend with extra %)
-		if (order_model.trend == Order.UP_TREND and float(currentPrice) >= float(order_model.treshold)) or (order_model.trend == Order.DOWN_TREND and float(currentPrice) <= float(order_model.trend_order)):
+		if (order_model.trend == Order.UP_TREND and float(currentPrice) >= float(order_model.treshold)) or (order_model.trend == Order.DOWN_TREND and float(currentPrice) <= float(order_model.treshold)):
 			position = True
 		else:
 			#wait for next timeslot
@@ -195,14 +193,15 @@ def findOrderPrice(polo_model, order_model):
 		#Nu blijven wij zoeken in de oders (beginnen bovenaan) totdat de order die wij willen maken gelijk in 1 van de Sell/buy orders past
 		fit = False
 		bottomPrice = 0
+		askAmount = 0
 		while not fit:
 			ask = next(orderBook)
-			askAmount = "{:.8f}".format(float(ask[0]) * float(ask[1]))
+			askAmount += float(ask[0]) * float(ask[1])
 			print("\nNext order:")
 			print("Price: \t\t"+str(ask[0]))
 			print("Amount: \t"+str(ask[1]))
-			print("BTC: \t\t"+str(askAmount))
-			if askAmount >= order_model.amount:
+			print("SUM BTC: \t\t"+"{:.8f}".format(askAmount))
+			if float(askAmount) >= float(order_model.amount):
 				print("\nThis order FITS the amount at price: "+str(ask[0]))
 				fit = True
 				bottomPrice = "{:.8f}".format(float(ask[0]))
@@ -236,13 +235,9 @@ def validatePosition(polo_model, order_model):
 		#als wel in openorderlijst dan wachten..
 		else:
 			eTimeMinutes = getElapsedTimeInMinutes(startTime)
-			if eTimeMinutes >= 10:
+			if eTimeMinutes >= 1:
 				#na 10 minuten cancel openorders
-				cancel = polo_model.cancel(order_model.market,orderNumber)
-				if cancel['success'] != 1:
-					print("\nOrder cancel has gone wrong, please confirm manually...")
-				else:
-					print("\nOrder has been successfully canceled...")
+				cancelOrder(polo_model, order_model, orderNumber)
 				#kijken of er trades zijn gedaan -> positie hebben -> doorgaan
 				#anders geen positie -> stoppen met programma
 				if checkOrderNumberInList(orderNumber, tradeHistoryList):
@@ -252,6 +247,16 @@ def validatePosition(polo_model, order_model):
 					print("\nNo trades found, aborting program...")
 					return False
 	return validation
+
+def cancelOrder(polo_model, order_model, orderNumber):
+	action = False
+	while not action:
+		cancel = polo_model.cancel(order_model.market,orderNumber)
+		if cancel['success'] != 1:
+			print("\nOrder cancel has gone wrong, please confirm manually...")
+		else:
+			print("\nOrder has been successfully canceled...")
+			action = True
 
 def checkOrderNumberInList(order_number, list):
 	for o in list:
@@ -289,7 +294,7 @@ def finalizePosition(polo_model, order_model):
 
 def closePosition(polo_model, order_model):
 	close = polo_model.closeMarginPosition(order_model.market)
-	if not close['success'] == 1:
+	if close['success'] != 1:
 		print("\nClosing the margin position has gone wrong...")
 		print(close)
 		return False
@@ -298,13 +303,8 @@ def closePosition(polo_model, order_model):
 		return True
 
 def positionInRange(order_model, current_price):
-	if order_model.trend == Order.UP_TREND:
-		if (current_price >= order_model.win_limit) or (current_price <= order_model.loss_limit and (current_price > (order_model.loss_limit / 1.05))):
-			return True
-	else:
-		if (current_price <= order_model.win_limit) or (current_price >= order_model.loss_limit and (current_price < (order_model.loss_limit * 1.05))):
-			return True
-	return False
+	if order_model.trend == Order.UP_TREND: return ((current_price >= order_model.win_limit) or ((current_price <= order_model.loss_limit) and (current_price > (order_model.loss_limit / 1.05))))
+	else: return ((current_price <= order_model.win_limit) or ((current_price >= order_model.loss_limit) and (current_price < (order_model.loss_limit * 1.05))))
 
 def getCurrentPrice(markets, d_market):
 	for r in markets:

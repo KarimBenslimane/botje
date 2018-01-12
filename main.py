@@ -1,11 +1,12 @@
 #from poloniex import poloniex
-from testpoloniex import poloniex
+from poloniex import poloniex
 from order import Order
 import functions as fun 
 
-APIKey = 'C69NO0HO-1AVQNH1P-VUV9I5AX-J7ZFWUMZ'
+#karim APIKey = 'C69NO0HO-1AVQNH1P-VUV9I5AX-J7ZFWUMZ'
+APIKey = 'QQR8AXI8-VX03XE1Z-G6CWD78P-83IZ8QYO	'
 poloModel = ''
-iSecret = '75c0d45aee16fb705fc8bff330e7030bf40146d87a3d224720b005541cf35b494828af0b68bf3c9bfa3c28a220bd1c11c9983cdd9ceac78be7dfd0b0353fd3d9'
+iSecret = ''
 orderModel = ''
 
 if not iSecret:
