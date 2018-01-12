@@ -157,11 +157,11 @@ def takePosition(current_price, order_model, polo_model):
 		if order_model.trend == Order.UP_TREND:
 			#buythatshit
 			print("\nmargin Buy market: "+str(order_model.market)+" amount: "+str(order_model.amount)+" for price: "+str(rightPrice))
-			poloniexOrder = polo_model.marginBuy(order_model.market, rightPrice, order_model.amount)
+			poloniexOrder = polo_model.marginBuy(order_model.market, rightPrice, (order_model.amount / rightPrice))
 		else:
 			#sellthatshit
 			print("\nmargin Sell market: "+str(order_model.market)+" amount: "+str(order_model.amount)+" for price: "+str(rightPrice))
-			poloniexOrder = polo_model.marginSell(order_model.market, rightPrice, order_model.amount)
+			poloniexOrder = polo_model.marginSell(order_model.market, rightPrice, (order_model.amount / rightPrice))
 		print("\n TESTING ----------------------")
 		print(poloniexOrder)
 		print("\n TESTING ----------------------")
