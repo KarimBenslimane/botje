@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime
-from itertools import cycle
 from order import Order
-from poloniex import poloniex
+from testpoloniex import poloniex
 import json
 import time
 
@@ -13,7 +12,7 @@ def initiateModel(APIKey, i_secret):
 	try:
 		return poloniex(APIKey, i_secret)
 	except:
-	    print("Unexpected error:", sys.exc_info()[0])
+	    print("[error] Unexpected error:", sys.exc_info()[0])
 
 def askForMarket(polo_model):
 	command = raw_input("\nPlease insert a BTC Market for trading or insert (s) for an overview... \n")
@@ -41,7 +40,7 @@ def getMarketList(polo_model):
 def checkMarket(command, polo_model):
 	markets = getMarketList(polo_model)
 	if not command in markets:
-		print("\nNot a valid Market entered, please try again... \n")
+		print("\n[error] Not a valid Market entered, please try again... \n")
 		return False
 	else:
 		return command
@@ -51,7 +50,7 @@ def askForAmount():
 	if float(0) < float(getAmount(command)):
 		return getAmount(command)
 	else:
-		print("\nCannot send a trade for 0 BTC, please try again....\n")
+		print("\n[error] Cannot send a trade for 0 BTC, please try again....\n")
 		askForAmount()
 
 def getAmount(amount):
@@ -79,7 +78,7 @@ def askForFBExtra():
 		fbExtra = int(command)
 		return fbExtra
 	except:
-		print("\nNot a valid number, please try again...")
+		print("\n[error] Not a valid number, please try again...")
 		return askForFBExtra()
 
 def getLimitAmount(treshold, percentage, trend_order, record):
@@ -97,7 +96,7 @@ def askForLossLimit(treshold, trend_order):
 	try:
 		percentage = int(command)
 	except:
-		print("\nNot a valid number, please try again...")
+		print("\n[error] Not a valid number, please try again...")
 		return askForFBExtra()
 
 	lossLimit = getLimitAmount(treshold, percentage, trend_order, 'loss')
@@ -108,7 +107,7 @@ def askForWinLimit(treshold, trend_order):
 	try:
 		percentage = int(command)
 	except:
-		print("\nNot a valid number, please try again...")
+		print("\n[error] Not a valid number, please try again...")
 		return askForFBExtra()
 
 	winLimit = getLimitAmount(treshold, percentage, trend_order, 'win')
@@ -120,7 +119,7 @@ def askForTimeSlot():
 		time = int(command)
 		return time
 	except:
-		print("\nNot a valid amount, please try again...")
+		print("\n[error] Not a valid amount, please try again...")
 		return askForTimeSlot()
 
 def findPosition(polo_model, order_model):
@@ -130,53 +129,57 @@ def findPosition(polo_model, order_model):
 	while not position:
 		startTime = datetime.now()
 		#get current price
-		print("\nChecking current price for: "+str(order_model.market)+"....\n")
-		currentPrice = getCurrentPrice(polo_model.returnTicker(), order_model.market)
-		print(currentPrice)
-		#if currentPrice exceeds constant(FB level + extra) (depending on trend if above or below):
-		#try:take position (buy or sell depending on trend with extra %)
-		if (order_model.trend == Order.UP_TREND and float(currentPrice) >= float(order_model.treshold)) or (order_model.trend == Order.DOWN_TREND and float(currentPrice) <= float(order_model.treshold)):
-			position = True
-		else:
-			#wait for next timeslot
-			eTimeMinutes = getElapsedTimeInMinutes(startTime)
-			waitForTimeInMinutes(order_model, eTimeMinutes)
+		currentPrice = getPositionPrice(polo_model, order_model)
+		if currentPrice:
+			print("\nChecking current price for: "+str(order_model.market)+", price is: "+str(currentPrice)+"....")
+			#if currentPrice exceeds constant(FB level + extra) (depending on trend if above or below):
+			#try:take position (buy or sell depending on trend with extra %)
+			if (order_model.trend == Order.UP_TREND and float(currentPrice) >= float(order_model.treshold)) or (order_model.trend == Order.DOWN_TREND and float(currentPrice) <= float(order_model.treshold)):
+				position = True
+			else:
+				#wait for next timeslot
+				eTimeMinutes = getElapsedTimeInMinutes(startTime)
+				waitForTimeInMinutes(order_model, eTimeMinutes)
 	try:
 		return takePosition(currentPrice, order_model, polo_model)
 	except Exception as e:
-		print("\n[error] Something went wrong while taking position...\n")
+		print("\n[error] Something went wrong while taking position...")
 		print(e)
 		return False
 
 def takePosition(current_price, order_model, polo_model):
-		print("\nTaking position at: "+current_price)
+		print("\nTaking position at: "+str(current_price))
 		#neemt het amount dat je wilt verkopen/kopen
 		#kijken bij de SUM(BTC) tot welke regel hij erin past
 		#en neem dan de prijs van die regel en verkoop/koop daarvoor
 		rightPrice = findOrderPrice(polo_model, order_model)
-		if order_model.trend == Order.UP_TREND:
-			#buythatshit
-			print("\nmargin Buy market: "+str(order_model.market)+" amount: "+str(order_model.amount)+" for price: "+str(rightPrice))
-			poloniexOrder = polo_model.marginBuy(order_model.market, rightPrice, (float(order_model.amount) / float(rightPrice)))
+		if rightPrice:
+			if order_model.trend == Order.UP_TREND:
+				#buythatshit
+				print("\nmargin Buy market: "+str(order_model.market)+" amount: "+str(order_model.amount)+" for price: "+str(rightPrice))
+				poloniexOrder = polo_model.marginBuy(order_model.market, rightPrice, (float(order_model.amount) / float(rightPrice)))
+			else:
+				#sellthatshit
+				print("\nmargin Sell market: "+str(order_model.market)+" amount: "+str(order_model.amount)+" for price: "+str(rightPrice))
+				poloniexOrder = polo_model.marginSell(order_model.market, rightPrice, (float(order_model.amount) / float(rightPrice)))
+			#for testing purpose:
+			# poloniexOrder = {}
+			# poloniexOrder['success'] = 1
+			# poloniexOrder['orderNumber'] = "test"
+			# poloniexOrder['date'] = datetime.now()
+			if 'orderNumber' in poloniexOrder:
+				orderNumber = poloniexOrder['orderNumber']
+				# orderDate = poloniexOrder['date']
+				order_model.order_number = orderNumber
+				# order_model.order_date = orderDate
+				print("\nOrder has been placed successfully, order#: "+str(orderNumber))
+				return True
+			else:
+				print("\n[error] Order has NOT been placed successfully...")
+				print(poloniexOrder)
+				return False
 		else:
-			#sellthatshit
-			print("\nmargin Sell market: "+str(order_model.market)+" amount: "+str(order_model.amount)+" for price: "+str(rightPrice))
-			poloniexOrder = polo_model.marginSell(order_model.market, rightPrice, (float(order_model.amount) / float(rightPrice)))
-		#for testing purpose:
-		# poloniexOrder = {}
-		# poloniexOrder['success'] = 1
-		# poloniexOrder['orderNumber'] = "test"
-		# poloniexOrder['date'] = datetime.now()
-		if 'orderNumber' in poloniexOrder:
-			orderNumber = poloniexOrder['orderNumber']
-			# orderDate = poloniexOrder['date']
-			order_model.order_number = orderNumber
-			# order_model.order_date = orderDate
-			print("\nOrder has been placed successfully, order#: "+str(orderNumber)+"\n")
-			return True
-		else:
-			print("\n[error] Order has NOT been placed successfully\n")
-			print(poloniexOrder)
+			print("\n[error] Something went wrong while finding order price... aborting")
 			return False
 
 def findOrderPrice(polo_model, order_model):
@@ -186,16 +189,20 @@ def findOrderPrice(polo_model, order_model):
 		orderBook = polo_model.returnOrderBook(order_model.market)
 		if order_model.trend == Order.UP_TREND:
 			print("BUY "+str(order_model.amount))
-			orderBook = cycle(orderBook['asks'])
+			orderBook = iter(orderBook['asks'])
 		else:
 			print("SELL "+str(order_model.amount))
-			orderBook = cycle(orderBook['bids'])
+			orderBook = iter(orderBook['bids'])
 		#Nu blijven wij zoeken in de oders (beginnen bovenaan) totdat de order die wij willen maken gelijk in 1 van de Sell/buy orders past
 		fit = False
 		bottomPrice = 0
 		askAmount = 0
 		while not fit:
-			ask = next(orderBook)
+			try:
+				ask = next(orderBook)
+			except Exception as e:
+				print("\n[error] Amount does not fit in orders... aborting")
+				return False
 			askAmount += float(ask[0]) * float(ask[1])
 			print("\nNext order:")
 			print("Price: \t\t"+str(ask[0]))
@@ -207,6 +214,7 @@ def findOrderPrice(polo_model, order_model):
 				bottomPrice = "{:.8f}".format(float(ask[0]))
 		return bottomPrice
 	except Exception as e:
+		print("\n[error] Something went wrong while finding the order price...")
 		print(e)
 		return False
 
@@ -227,7 +235,7 @@ def validatePosition(polo_model, order_model):
 		#als niet in openorderlijst en WEL in trade history dan is ie klaar
 		if not checkOrderNumberInList(orderNumber, openOrderList):
 			if not checkOrderNumberInList(orderNumber, tradeHistoryList):
-				print("\nOrder is NOT found in OPENORDERLIST and NOT found in TRADEHISTORYLIST, aborting...")
+				print("\n[error] Order is NOT found in OPENORDERLIST and NOT found in TRADEHISTORYLIST, aborting...")
 				return False
 			else:
 				print("\nOrder is fully validated...")
@@ -244,7 +252,7 @@ def validatePosition(polo_model, order_model):
 					print("\nTrades found for order, position has been taken, continue with program...")
 					validation = True
 				else:
-					print("\nNo trades found, aborting program...")
+					print("\n[error] No trades found, aborting program...")
 					return False
 	return validation
 
@@ -253,7 +261,7 @@ def cancelOrder(polo_model, order_model, orderNumber):
 	while not action:
 		cancel = polo_model.cancel(order_model.market,orderNumber)
 		if cancel['success'] != 1:
-			print("\nOrder cancel has gone wrong, please confirm manually...")
+			print("\n[error] Order cancel has gone wrong, please confirm manually...")
 		else:
 			print("\nOrder has been successfully canceled...")
 			action = True
@@ -272,7 +280,7 @@ def getElapsedTimeInMinutes(start_time):
 def waitForTimeInMinutes(order_model, eTimeMinutes):
 	remainingTime = (float(order_model.timeslot) - float(eTimeMinutes))
 	if remainingTime > 0:
-		print("\n Waiting for: "+str(remainingTime)+" minutes....")
+		print("\nWaiting for: "+str(remainingTime)+" minutes....")
 		time.sleep(float(remainingTime*60))
 
 def finalizePosition(polo_model, order_model):
@@ -280,7 +288,7 @@ def finalizePosition(polo_model, order_model):
 	#loop every timeslot untill position greater or less then constant(loss/win) limit -> liquidize
 	#else wait...
 	while not liquidize:
-		print("\nChecking current price for: "+str(order_model.market)+"....\n")
+		print("\nChecking current price for: "+str(order_model.market)+"...")
 		startTime = datetime.now()
 		currentPrice = getCurrentPrice(polo_model.returnTicker(), order_model.market)
 		if positionInRange(order_model, currentPrice):
@@ -310,4 +318,17 @@ def getCurrentPrice(markets, d_market):
 	for r in markets:
 		if r == d_market:
 			return markets[r]['last']
+
+def getPositionPrice(polo_model, order_model):
+	try:
+		orders = polo_model.returnOrderBook(order_model.market)
+		if order_model.trend == Order.UP_TREND:
+			orders = orders['asks']
+		else:
+			orders = orders['bids']
+		return orders[0][0]
+	except Exception as e:
+		print("\n[error] Could not get position price....")
+		print(e)
+		return False
 

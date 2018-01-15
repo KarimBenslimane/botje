@@ -40,7 +40,7 @@ class poloniex:
     def returnOpenOrders(self,currencyPair):
         return  [
                     {
-                        "orderNumber":"154407998",
+                        "orderNumber":"1245",
                         "type":"sell",
                         "rate":"0.025",
                         "amount":"100",
@@ -65,7 +65,7 @@ class poloniex:
                         "amount": "0.10000000", 
                         "total": "0.00256549", 
                         "fee": "0.00200000", 
-                        "orderNumber": "124124124", 
+                        "orderNumber": "154407998", 
                         "type": "sell", 
                         "category": "exchange" 
                     },

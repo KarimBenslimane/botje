@@ -1,5 +1,5 @@
 #from poloniex import poloniex
-from poloniex import poloniex
+from testpoloniex import poloniex
 from order import Order
 import functions as fun 
 
