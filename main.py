@@ -3,6 +3,7 @@ from testpoloniex import poloniex
 from order import Order
 import functions as fun
 import logging
+from datetime import datetime
 
 def initialize(poloModel):
 	#ask for BTC market --TODO ONLY MARGIN TRADING
@@ -42,7 +43,7 @@ def initialize(poloModel):
 def initializeLog():
 	logger = logging.getLogger('main_bot')
 	logger.setLevel(logging.DEBUG)
-	fh = logging.FileHandler('bot.log')
+	fh = logging.FileHandler('/log/bot'+datetime.now().strftime("%Y-%m-%d %H:%M:%S")+'.log')
 	fh.setLevel(logging.DEBUG)
 	formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 	fh.setFormatter(formatter)
