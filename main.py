@@ -40,17 +40,17 @@ def initialize(poloModel):
 		print("\nIncorrect information, starting again.... \n")
 		return initialize(poloModel)
 
-def initializeLog():
+def initializeLog(starttime):
 	logger = logging.getLogger('main_bot')
 	logger.setLevel(logging.DEBUG)
-	fh = logging.FileHandler('/log/bot'+datetime.now().strftime("%Y-%m-%d %H:%M:%S")+'.log')
+	fh = logging.FileHandler('log/bot'+starttime+'.log')
 	fh.setLevel(logging.DEBUG)
 	formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 	fh.setFormatter(formatter)
 	logger.addHandler(fh)
 	return logger
-
-logger = initializeLog()
+starttime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+logger = initializeLog(starttime)
 logger.info('Starting application')
 
 #karim APIKey = 'C69NO0HO-1AVQNH1P-VUV9I5AX-J7ZFWUMZ'
