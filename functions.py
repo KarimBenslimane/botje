@@ -270,10 +270,10 @@ def getElapsedTimeInMinutes(start_time):
 	return eTimeMinutes
 
 def waitForTimeInMinutes(order_model, eTimeMinutes):
-	remainingTime = (order_model.timeslot - eTimeMinutes)
+	remainingTime = (float(order_model.timeslot) - float(eTimeMinutes))
 	if remainingTime > 0:
 		print("\n Waiting for: "+str(remainingTime)+" minutes....")
-		time.sleep(remainingTime*60)
+		time.sleep(float(remainingTime*60))
 
 def finalizePosition(polo_model, order_model):
 	liquidize = False
