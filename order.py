@@ -14,6 +14,8 @@ class Order:
 		self.treshold = Order.calculateTreshold(fb_amount, fb_amount_extra, trend)
 		self.order_number = 0
 		self.order_date = ''
+		self.position = 0
+		self.closedAt = 0
 
 	def confirmation(self):
 		print("\n CONFIRMATION, PLEASE CHECK CAREFULLY: \n")

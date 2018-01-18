@@ -45,12 +45,24 @@ def initializeLog(starttime):
 	logger.setLevel(logging.DEBUG)
 	fh = logging.FileHandler('log/bot'+starttime+'.log')
 	fh.setLevel(logging.DEBUG)
+	return createLogger(logger, fh)
+	
+def initializeProfitLog():
+	profitLogger = logging.getLogger('profit_log')
+	profitLogger.setLevel(logging.INFO)
+	fh = logging.FileHandler('log/profit.log')
+	fh.setLevel(logging.INFO)
+	return createLogger(profitLogger, fh)
+
+def createLogger(logger, fh):
 	formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 	fh.setFormatter(formatter)
 	logger.addHandler(fh)
 	return logger
+
 starttime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 logger = initializeLog(starttime)
+profitLogger = initializeProfitLog()
 logger.info('Starting application')
 
 #karim APIKey = 'C69NO0HO-1AVQNH1P-VUV9I5AX-J7ZFWUMZ'
@@ -69,19 +81,25 @@ while(not fun.checkSecret(iSecret)):
 logger.info('initiating poloniex model')
 poloModel = fun.initiateModel(APIKey, iSecret)
 
-logger.info('initiating order model')
-orderModel = initialize(poloModel)
 final = False
-if isinstance(orderModel, Order):
-	logger.info('finding position')
-	position = fun.findPosition(poloModel, orderModel)
-	if position:
-		logger.info('validating position')
-		validation = fun.validatePosition(poloModel, orderModel)
-		if validation:
-			logger.info('finalizing position')
-			final = fun.finalizePosition(poloModel, orderModel)
+try:
+	logger.info('initiating order model')
+	orderModel = initialize(poloModel)
+	if isinstance(orderModel, Order):
+		logger.info('finding position')
+		position = fun.findPosition(poloModel, orderModel)
+		if position:
+			logger.info('validating position')
+			validation = fun.validatePosition(poloModel, orderModel)
+			if validation:
+				logger.info('finalizing position')
+				final = fun.finalizePosition(poloModel, orderModel)
+except Exception, e:
+	print(str(e))
+	logger.debug(str(e))
+
 if final:
+	fun.logProfit(orderModel, starttime)
 	logger.info('Program ended fully')
 	print("\nFully completed. Exiting program, bye!...")
 else:

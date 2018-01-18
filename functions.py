@@ -5,9 +5,11 @@ from testpoloniex import poloniex
 import json
 import time
 import logging
+import math
 
 # create logger
 module_logger = logging.getLogger('main_bot.functions')
+profit_logger = logging.getLogger('profit_log.functions')
 
 def checkSecret(secret):
 	return len(secret) == 128
@@ -128,32 +130,34 @@ def askForTimeSlot():
 		return askForTimeSlot()
 
 def findPosition(polo_model, order_model):
-	position = False
-	currentPrice = ''
-	#loop every timeslot untill we have a position in the market:
-	while not position:
-		startTime = datetime.now()
-		#get current price
-		currentPrice = getPositionPrice(polo_model, order_model)
-		if currentPrice:
-			print("\nChecking current price for: "+str(order_model.market)+", price is: "+str(currentPrice)+"....")
-			#if currentPrice exceeds constant(FB level + extra) (depending on trend if above or below):
-			#try:take position (buy or sell depending on trend with extra %)
-			if (order_model.trend == Order.UP_TREND and float(currentPrice) >= float(order_model.treshold)) or (order_model.trend == Order.DOWN_TREND and float(currentPrice) <= float(order_model.treshold)):
-				module_logger.info("found a position at price: "+str(currentPrice))
-				position = True
-			else:
-				#wait for next timeslot
-				eTimeMinutes = getElapsedTimeInMinutes(startTime)
-				waitForTimeInMinutes(order_model, eTimeMinutes)
 	try:
+		position = False
+		currentPrice = ''
+		#loop every timeslot untill we have a position in the market:
+		while not position:
+			startTime = datetime.now()
+			#get current price
+			currentPrice = getPositionPrice(polo_model, order_model)
+			if currentPrice:
+				print("\nChecking current price for: "+str(order_model.market)+", price is: "+str(currentPrice)+"....")
+				#if currentPrice exceeds constant(FB level + extra) (depending on trend if above or below):
+				#try:take position (buy or sell depending on trend with extra %)
+				if (order_model.trend == Order.UP_TREND and float(currentPrice) >= float(order_model.treshold)) or (order_model.trend == Order.DOWN_TREND and float(currentPrice) <= float(order_model.treshold)):
+					module_logger.info("found a position at price: "+str(currentPrice))
+					position = True
+				else:
+					#wait for next timeslot
+					eTimeMinutes = getElapsedTimeInMinutes(startTime)
+					waitForTimeInMinutes(order_model, eTimeMinutes)
 		return takePosition(currentPrice, order_model, polo_model)
 	except Exception as e:
-		print("\n[error] Something went wrong while taking position...")
-		print(e)
+		print("\n[error] Something went wrong while finding position...")
+		module_logger.debug("[error] Something went wrong while finding position...")
+		raise e
 		return False
 
 def takePosition(current_price, order_model, polo_model):
+	try:
 		module_logger.info('starting to take position')
 		print("\nTaking position at: "+str(current_price))
 		#neemt het amount dat je wilt verkopen/kopen
@@ -180,6 +184,7 @@ def takePosition(current_price, order_model, polo_model):
 				orderNumber = poloniexOrder['orderNumber']
 				# orderDate = poloniexOrder['date']
 				order_model.order_number = orderNumber
+				order_model.position = rightPrice
 				# order_model.order_date = orderDate
 				module_logger.info("order has been placed")
 				print("\nOrder has been placed successfully, order#: "+str(orderNumber))
@@ -188,11 +193,15 @@ def takePosition(current_price, order_model, polo_model):
 				module_logger.debug("[error] Order has NOT been placed successfully...")
 				print("\n[error] Order has NOT been placed successfully...")
 				print(poloniexOrder)
-				return False
 		else:
 			module_logger.debug("[error] cannot find the right price")
 			print("\n[error] Something went wrong while finding order price... aborting")
-			return False
+	except Exception, e:
+		print("\n[error] Something went wrong while taking position...")
+		module_logger.debug("[error] Something went wrong while taking position...")
+		raise e
+	return False
+		
 
 def findOrderPrice(polo_model, order_model):
 	module_logger.info('starting to find the right order price')
@@ -228,8 +237,8 @@ def findOrderPrice(polo_model, order_model):
 	except Exception as e:
 		module_logger.debug("[error] Finding the order price went wrong")
 		print("\n[error] Something went wrong while finding the order price...")
-		print(e)
-		return False
+		raise e
+	return False
 
 def logOrderPrice(ask, askAmount):
 	print("\nNext order:")
@@ -238,49 +247,55 @@ def logOrderPrice(ask, askAmount):
 	print("SUM BTC: \t\t"+"{:.8f}".format(askAmount))
 
 def validatePosition(polo_model, order_model):
-	orderNumber= order_model.order_number
-	module_logger.info("Validating ordernumber:"+str(orderNumber))
-	print("\nStarting validation for order#: "+str(orderNumber))
-	#loop untill validation for position
-	#if after 10 minutes no validation, cancel order
-	validation = False
-	startTime = datetime.now()
-	while not validation:
-		#check openorderlijst of order# er niet meer in staat (afgehandeld)
-		#en tradehistorylijst voor 1 keer order (een trade gedaan voor die order)
-		#doorgaan met programma
-		openOrderList = polo_model.returnOpenOrders(order_model.market)
-		tradeHistoryList = polo_model.returnTradeHistory(order_model.market)
-		#als niet in openorderlijst en niet in trade history dan is er iets fout
-		#als niet in openorderlijst en WEL in trade history dan is ie klaar
-		if not checkOrderNumberInList(orderNumber, openOrderList):
-			if not checkOrderNumberInList(orderNumber, tradeHistoryList):
-				module_logger.debug("[error] order is not found in openorderlist and not found in tradehistorylist")
-				print("\n[error] Order is NOT found in OPENORDERLIST and NOT found in TRADEHISTORYLIST, aborting...")
-				return False
-			else:
-				module_logger.info("order is fully validated")
-				print("\nOrder is fully validated...")
-				validation = True
-		#als wel in openorderlijst dan wachten..
-		else:
-			eTimeMinutes = getElapsedTimeInMinutes(startTime)
-			if eTimeMinutes >= 10:
-				#na 10 minuten cancel openorders
-				module_logger.info("10 minutes have passed and order is still open")
-				cancelOrder(polo_model, order_model, orderNumber)
-				#kijken of er trades zijn gedaan -> positie hebben -> doorgaan
-				#anders geen positie -> stoppen met programma
-				if checkOrderNumberInList(orderNumber, tradeHistoryList):
-					module_logger.info("trades found for order, position has been taken, continue with program")
-					print("\nTrades found for order, position has been taken, continue with program...")
-					validation = True
-				else:
-					module_logger.debug("[error] no trades found, aborting program")
-					print("\n[error] No trades found, aborting program...")
+	try:
+		orderNumber= order_model.order_number
+		module_logger.info("Validating ordernumber:"+str(orderNumber))
+		print("\nStarting validation for order#: "+str(orderNumber))
+		#loop untill validation for position
+		#if after 10 minutes no validation, cancel order
+		validation = False
+		startTime = datetime.now()
+		while not validation:
+			#check openorderlijst of order# er niet meer in staat (afgehandeld)
+			#en tradehistorylijst voor 1 keer order (een trade gedaan voor die order)
+			#doorgaan met programma
+			openOrderList = polo_model.returnOpenOrders(order_model.market)
+			tradeHistoryList = polo_model.returnTradeHistory(order_model.market)
+			#als niet in openorderlijst en niet in trade history dan is er iets fout
+			#als niet in openorderlijst en WEL in trade history dan is ie klaar
+			if not checkOrderNumberInList(orderNumber, openOrderList):
+				if not checkOrderNumberInList(orderNumber, tradeHistoryList):
+					module_logger.debug("[error] order is not found in openorderlist and not found in tradehistorylist")
+					print("\n[error] Order is NOT found in OPENORDERLIST and NOT found in TRADEHISTORYLIST, aborting...")
 					return False
-	return validation
-
+				else:
+					module_logger.info("order is fully validated")
+					print("\nOrder is fully validated...")
+					validation = True
+			#als wel in openorderlijst dan wachten..
+			else:
+				eTimeMinutes = getElapsedTimeInMinutes(startTime)
+				if eTimeMinutes >= 10:
+					#na 10 minuten cancel openorders
+					module_logger.info("10 minutes have passed and order is still open")
+					cancelOrder(polo_model, order_model, orderNumber)
+					#kijken of er trades zijn gedaan -> positie hebben -> doorgaan
+					#anders geen positie -> stoppen met programma
+					if checkOrderNumberInList(orderNumber, tradeHistoryList):
+						module_logger.info("trades found for order, position has been taken, continue with program")
+						print("\nTrades found for order, position has been taken, continue with program...")
+						validation = True
+					else:
+						module_logger.debug("[error] no trades found, aborting program")
+						print("\n[error] No trades found, aborting program...")
+						return False
+		return validation
+	except Exception, e:
+		print("\n[error] Something went wrong while validating position...")
+		module_logger.debug("[error] Something went wrong while validating position...")
+		raise e
+		return False
+	
 def cancelOrder(polo_model, order_model, orderNumber):
 	module_logger.info("cancelling order")
 	action = False
@@ -312,39 +327,56 @@ def waitForTimeInMinutes(order_model, eTimeMinutes):
 		time.sleep(float(remainingTime*60))
 
 def finalizePosition(polo_model, order_model):
-	liquidize = False
-	#loop every timeslot untill position greater or less then constant(loss/win) limit -> liquidize
-	#else wait...
-	while not liquidize:
-		print("\nChecking current price for: "+str(order_model.market)+"...")
-		startTime = datetime.now()
-		currentPrice = getCurrentPrice(polo_model.returnTicker(), order_model.market)
-		if positionInRange(order_model, currentPrice):
-			module_logger.info("price for market is in range, liquidizing at "+str(currentPrice))
-			print("\nCurrent price is in range, liquidizing... at "+str(currentPrice))
-			liquidize = True
-		else:
-			eTimeMinutes = getElapsedTimeInMinutes(startTime)
-			waitForTimeInMinutes(order_model, eTimeMinutes)
-	#close position
-	return closePosition(polo_model, order_model)
+	try:
+		liquidize = False
+		#loop every timeslot untill position greater or less then constant(loss/win) limit -> liquidize
+		#else wait...
+		while not liquidize:
+			print("\nChecking current price for: "+str(order_model.market)+"...")
+			startTime = datetime.now()
+			currentPrice = getCurrentPrice(polo_model.returnTicker(), order_model.market)
+			if positionInRange(order_model, currentPrice):
+				module_logger.info("price for market is in range, liquidizing at "+str(currentPrice))
+				print("\nCurrent price is in range, liquidizing... at "+str(currentPrice))
+				liquidize = True
+				order_model.closedAt = currentPrice
+			else:
+				eTimeMinutes = getElapsedTimeInMinutes(startTime)
+				waitForTimeInMinutes(order_model, eTimeMinutes)
+		#close position
+		return closePosition(polo_model, order_model)
+	except Exception, e:
+		print("\n[error] Something went wrong while finalizing position...")
+		module_logger.debug("[error] Something went wrong while finalizing position...")
+		raise e
+	return False
+	
 
 def closePosition(polo_model, order_model):
-	module_logger.info("closing position")
-	close = polo_model.closeMarginPosition(order_model.market)
-	if close['success'] != 1:
-		module_logger.debug("[error] closing position has gone wrong")
-		print("\nClosing the margin position has gone wrong...")
-		print(close)
-		return False
-	else:
-		module_logger.info("successfully closed the margin position")
-		print("\nSuccessfully closed the margin position...")
-		return True
+	try:
+		module_logger.info("closing position")
+		close = polo_model.closeMarginPosition(order_model.market)
+		if close['success'] != 1:
+			module_logger.debug("[error] closing position has gone wrong")
+			print("\nClosing the margin position has gone wrong...")
+			print(close)
+		else:
+			module_logger.info("successfully closed the margin position")
+			print("\nSuccessfully closed the margin position...")
+			return True
+	except Exception, e:
+		print("\n[error] Something went wrong while closing position...")
+		module_logger.debug("[error] Something went wrong while closing position")
+		raise e
+	return False
+	
 
 def positionInRange(order_model, current_price):
-	if order_model.trend == Order.UP_TREND: return ((current_price >= order_model.win_limit) or ((current_price <= order_model.loss_limit) and (current_price > (order_model.loss_limit / 1.05))))
-	else: return ((current_price <= order_model.win_limit) or ((current_price >= order_model.loss_limit) and (current_price < (order_model.loss_limit * 1.05))))
+	current_price = float(current_price)
+	lossLimit = float(order_model.loss_limit)
+	winLimit = float(order_model.win_limit)
+	if order_model.trend == Order.UP_TREND: return ((current_price >= winLimit) or ((current_price <= lossLimit) and (current_price > (lossLimit / 1.05))))
+	else: return ((current_price <= winLimit) or ((current_price >= lossLimit) and (current_price < (lossLimit * 1.05))))
 
 def getCurrentPrice(markets, d_market):
 	for r in markets:
@@ -362,6 +394,13 @@ def getPositionPrice(polo_model, order_model):
 	except Exception as e:
 		module_logger.debug("[error] could not get position price")
 		print("\n[error] Could not get position price....")
-		print(e)
+		raise e
 		return False
 
+def logProfit(orderModel, starttime):
+	profit = math.fabs(float(orderModel.closedAt) - float(orderModel.position))
+	profit_logger.info(	"Bot started at: "+str(starttime)+
+						", with trend: "+str(orderModel.trend)+
+						", took position at: "+str(orderModel.position)+
+						", closed at: "+str(orderModel.closedAt)+
+						", made profit: "+ str(profit))
