@@ -140,6 +140,7 @@ def findPosition(polo_model, order_model):
 			currentPrice = getPositionPrice(polo_model, order_model)
 			if currentPrice:
 				print("\nChecking current price for: "+str(order_model.market)+", price is: "+str(currentPrice)+"....")
+				module_logger.info("[FINDPOSITION]Checking current price for: "+str(order_model.market)+", price is: "+str(currentPrice))
 				#if currentPrice exceeds constant(FB level + extra) (depending on trend if above or below):
 				#try:take position (buy or sell depending on trend with extra %)
 				if (order_model.trend == Order.UP_TREND and float(currentPrice) >= float(order_model.treshold)) or (order_model.trend == Order.DOWN_TREND and float(currentPrice) <= float(order_model.treshold)):
@@ -175,17 +176,11 @@ def takePosition(current_price, order_model, polo_model):
 				module_logger.info("selling:  "+str(order_model.market)+" amount: "+str(order_model.amount)+" for price: "+str(rightPrice))
 				print("\nmargin Sell market: "+str(order_model.market)+" amount: "+str(order_model.amount)+" for price: "+str(rightPrice))
 				poloniexOrder = polo_model.marginSell(order_model.market, rightPrice, (float(order_model.amount) / float(rightPrice)))
-			#for testing purpose:
-			# poloniexOrder = {}
-			# poloniexOrder['success'] = 1
-			# poloniexOrder['orderNumber'] = "test"
-			# poloniexOrder['date'] = datetime.now()
 			if 'orderNumber' in poloniexOrder:
 				orderNumber = poloniexOrder['orderNumber']
-				# orderDate = poloniexOrder['date']
+				order_model.position_trades = poloniexOrder['resultingTrades']
 				order_model.order_number = orderNumber
 				order_model.position = rightPrice
-				# order_model.order_date = orderDate
 				module_logger.info("order has been placed")
 				print("\nOrder has been placed successfully, order#: "+str(orderNumber))
 				return True
@@ -332,9 +327,10 @@ def finalizePosition(polo_model, order_model):
 		#loop every timeslot untill position greater or less then constant(loss/win) limit -> liquidize
 		#else wait...
 		while not liquidize:
-			print("\nChecking current price for: "+str(order_model.market)+"...")
 			startTime = datetime.now()
 			currentPrice = getCurrentPrice(polo_model.returnTicker(), order_model.market)
+			print("\nChecking current price for: "+str(order_model.market)+" at: "+str(currentPrice))
+			module_logger.info("[CLOSINGPOSITION]Checking current price for: "+str(order_model.market)+" at: "+str(currentPrice))
 			if positionInRange(order_model, currentPrice):
 				module_logger.info("price for market is in range, liquidizing at "+str(currentPrice))
 				print("\nCurrent price is in range, liquidizing... at "+str(currentPrice))
@@ -361,6 +357,7 @@ def closePosition(polo_model, order_model):
 			print("\nClosing the margin position has gone wrong...")
 			print(close)
 		else:
+			order_model.result_trades = close['resultingTrades']
 			module_logger.info("successfully closed the margin position")
 			print("\nSuccessfully closed the margin position...")
 			return True
@@ -397,10 +394,36 @@ def getPositionPrice(polo_model, order_model):
 		raise e
 		return False
 
-def logProfit(orderModel, starttime):
-	profit = math.fabs(float(orderModel.closedAt) - float(orderModel.position))
-	profit_logger.info(	"Bot started at: "+str(starttime)+
-						", with trend: "+str(orderModel.trend)+
-						", took position at: "+str(orderModel.position)+
-						", closed at: "+str(orderModel.closedAt)+
-						", made profit: "+ str(profit))
+def logProfit(order_model, starttime):
+	profit = calculateProfit(order_model)
+	if profit >= 0:
+		profitStr = "[PROFIT] "
+	else:
+		profitStr = "[LOSS] "
+	profitStr += "Bot started at: "+str(starttime)
+	profitStr += ", at pair: "+str(order_model.market)
+	profitStr += ", with trend: "+str(order_model.trend)
+	profitStr += ", %win: "+str(order_model.win_limit)
+	profitStr += ", %loss: "+str(order_model.loss_limit)
+	profitStr += ", took position at: "+str(order_model.position)
+	profitStr += ", closed at: "+str(order_model.closedAt)
+	profitStr += ", made profit: "+ str(profit)
+	profit_logger.info(profitStr)
+
+def calculateProfit(order_model):
+	positionTrades = order_model.position_trades
+	closingTrades = order_model.result_trades
+	positionTotal = 0.0
+	closingTotal = 0.0
+	for positionPair in positionTrades[order_model.market]:
+		positionTotal += float(positionPair['total'])
+	for closingPair in closingTrades[order_model.market]:
+		closingTotal += float(closingPair['total'])
+	if order_model.trend == Order.UP_TREND:
+		#positiontrades opgeteld (BTC) - closingtrades opgeteld (BTC)
+		#bijvoorbeeld eerst 50 BTC gekocht daarna 55 BTC verkocht = 5 BTC winst
+		return (float(closingTotal) - float(positionTotal))
+	else:
+		#positiontrades opgeteld (BTC) -  closingtrades opgeteld(BTC) * - 1
+		#bijvoorbeeld eerst 50 BTC verkocht daarna 55 BTC gekocht = 5 BTC winst
+		return (float(closingTotal) - float(positionTotal)) * float(-1)

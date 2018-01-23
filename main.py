@@ -1,9 +1,10 @@
 #from poloniex import poloniex
 from testpoloniex import poloniex
+from datetime import datetime
 from order import Order
 import functions as fun
 import logging
-from datetime import datetime
+import os
 
 def initialize(poloModel):
 	#ask for BTC market --TODO ONLY MARGIN TRADING
@@ -60,7 +61,11 @@ def createLogger(logger, fh):
 	logger.addHandler(fh)
 	return logger
 
+def closeFile(starttime, currentDir):
+	os.rename(currentDir+'/log/bot'+starttime+'.log', currentDir+'/log/[FINISHED]bot'+starttime+'.log')
+
 starttime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+currentDir = os.path.dirname(os.path.abspath(__file__))
 logger = initializeLog(starttime)
 profitLogger = initializeProfitLog()
 logger.info('Starting application')
@@ -100,6 +105,7 @@ except Exception, e:
 
 if final:
 	fun.logProfit(orderModel, starttime)
+	closeFile(starttime, currentDir)
 	logger.info('Program ended fully')
 	print("\nFully completed. Exiting program, bye!...")
 else:

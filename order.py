@@ -16,6 +16,8 @@ class Order:
 		self.order_date = ''
 		self.position = 0
 		self.closedAt = 0
+		self.position_trades = []
+		self.result_trades = []
 
 	def confirmation(self):
 		print("\n CONFIRMATION, PLEASE CHECK CAREFULLY: \n")
